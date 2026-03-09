@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS products (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(36) NOT NULL,
+    product_id VARCHAR(36) NOT NULL,
+    amount BIGINT NOT NULL,
+    type VARCHAR(20) NOT NULL, -- DEPOSIT, WITHDRAWAL
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
