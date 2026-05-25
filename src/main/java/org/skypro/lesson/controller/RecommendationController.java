@@ -19,7 +19,6 @@ public class RecommendationController {
 
     private final RecommendationsService recommendationsService;
 
-    @Autowired
     public RecommendationController(RecommendationsService recommendationsService) {
         this.recommendationsService = recommendationsService;
     }

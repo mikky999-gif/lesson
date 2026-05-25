@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-rule-table
+      author: your_author
+      changes:
+        - createTable:
+            tableName: dynamic_rule
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: product_name
+                  type: varchar(255)
+              - column:
+                  name: product_id
+                  type: uuid
+              - column:
+                  name: product_text
+                  type: text
+              - column:
+                  name: rule_definition
+                  type: jsonb # Поле для хранения массива JSON-правил
