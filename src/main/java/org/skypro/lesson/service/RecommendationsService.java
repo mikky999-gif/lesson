@@ -3,6 +3,8 @@ package org.skypro.lesson.service;
 import org.skypro.lesson.dto.Ruleset;
 import org.skypro.lesson.model.Recommendation;
 import org.skypro.lesson.model.DynamicRule;
+import org.skypro.lesson.model.RuleStats;
+import org.skypro.lesson.repository.RuleStatsRepository;
 import org.skypro.lesson.repository.jpa.DynamicRuleJpaRepository;
 import org.skypro.lesson.repository.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,28 +23,23 @@ public class RecommendationsService {
     private final TransactionRepository transactionRepository;
     private final List<Ruleset> rulesets;
     private final JdbcTemplate jdbcTemplate;
+    private final RuleStatsRepository ruleStatsRepository;
+    private final DynamicRuleJpaRepository dynamicRuleJpaRepository;
 
     @Autowired
     public RecommendationsService(
             DynamicRuleJpaRepository jpaRepo,
             TransactionRepository transactionRepository,
             List<Ruleset> rulesets,
-            @Qualifier("recommendationsJdbcTemplate") JdbcTemplate jdbcTemplate) {
+            @Qualifier("recommendationsJdbcTemplate") JdbcTemplate jdbcTemplate,
+            RuleStatsRepository ruleStatsRepository,
+            DynamicRuleJpaRepository dynamicRuleJpaRepository) {
         this.jpaRepo = jpaRepo;
         this.transactionRepository = transactionRepository;
         this.rulesets = rulesets;
         this.jdbcTemplate = jdbcTemplate;
-    }
-
-
-    private long getSumByType(UUID userId, String productType, String transactionType) {
-        String sql = """
-            SELECT COALESCE(SUM(CASE WHEN t.type = ? THEN t.amount ELSE -t.amount END), 0)
-            FROM transactions t
-            JOIN products p ON t.product_id = p.id
-            WHERE t.user_id = ? AND p.type = ?
-            """;
-        return jdbcTemplate.queryForObject(sql, Long.class, transactionType, userId.toString(), productType);
+        this.ruleStatsRepository = ruleStatsRepository;
+        this.dynamicRuleJpaRepository = dynamicRuleJpaRepository;
     }
 
     public List<Recommendation> getRecommendations(UUID userId) {
@@ -71,16 +68,31 @@ public class RecommendationsService {
     }
 
     private boolean checkDynamicRuleConditions(DynamicRule rule, UUID userId) {
+        boolean result = true;
         for (DynamicRule.QueryDefinition query : rule.getRuleDefinition()) {
-            boolean result = executeQuery(query, userId);
+            boolean queryResult = executeQuery(query, userId);
             if (query.isNegate() != null && query.isNegate()) {
-                result = !result;
+                queryResult = !queryResult;
             }
-            if (!result) {
-                return false;
-            }
+            result &= queryResult;
         }
-        return true;
+
+        if (result) {
+            incrementRuleCounter(rule.getId());
+        }
+        return result;
+    }
+
+    private void incrementRuleCounter(UUID ruleId) {
+        RuleStats stats = ruleStatsRepository.findById(ruleId).orElseGet(() -> {
+            RuleStats newStats = new RuleStats();
+            newStats.setRule(dynamicRuleJpaRepository.findById(ruleId).orElseThrow());
+            newStats.setCounter(0);
+            return newStats;
+        });
+
+        stats.setCounter(stats.getCounter() + 1);
+        ruleStatsRepository.save(stats);
     }
 
     private boolean executeQuery(DynamicRule.QueryDefinition query, UUID userId) {
@@ -102,8 +114,7 @@ public class RecommendationsService {
                 String transTypeSum = (String) args.get(1);
                 String operator = (String) args.get(2);
                 long constant = Long.parseLong((String) args.get(3));
-
-                long sumValue = getSumByType(userId, prodTypeSum, transTypeSum);
+                long sumValue = transactionRepository.calculateBalance(userId, prodTypeSum);
                 return compare(sumValue, operator, constant);
 
             case "TRANSACTION_SUM_COMPARE_DEPOSIT_WITHDRAW":

@@ -1,32 +1,35 @@
 package org.skypro.lesson.model;
 
-import jakarta.persistence.Entity;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.persistence.*;
 import lombok.Data;
+import org.skypro.lesson.converter.QueryDefinitionConverter;
+
 import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table("dynamic_rule")
+@Table(name = "dynamic_rule")
 @Data
 public class DynamicRule {
 
     @Id
-    @Column("id")
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id")
     private UUID id;
 
-    @Column("product_name")
+    @Column(name = "product_name")
     private String productName;
 
-    @Column("product_id")
+    @Column(name = "product_id")
     private UUID productId;
 
-    @Column("product_text")
+    @Column(name = "product_text")
     private String productText;
 
-    @Column("rule_definition")
+    @Column(name = "rule_definition")
+    @Convert(converter = QueryDefinitionConverter.class)
+    @JsonProperty("rule")
     private List<QueryDefinition> ruleDefinition;
 
     @Data

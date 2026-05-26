@@ -2,7 +2,6 @@ package org.skypro.lesson.controller;
 
 import org.skypro.lesson.model.Recommendation;
 import org.skypro.lesson.service.RecommendationsService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
