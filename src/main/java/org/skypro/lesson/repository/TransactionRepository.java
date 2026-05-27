@@ -5,7 +5,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -56,11 +55,12 @@ public class TransactionRepository {
         return result != null ? result.longValue() : 0;
     }
 
-    private String buildCacheKey(String methodName, UUID userId, String productType) {
-        return methodName + ":" + userId + ":" + productType;
+    public long calculateBalance(UUID userId, String productType) {
+        String key = buildCacheKey("calculateBalance", userId, productType);
+        return (long) cache.get(key, k -> doCalculateBalance(userId, productType));
     }
 
-    public long calculateBalance(UUID userId, String productType) {
+    private long doCalculateBalance(UUID userId, String productType) {
         String sql = """
             SELECT COALESCE(SUM(CASE WHEN t.type = 'DEPOSIT' THEN t.amount ELSE -t.amount END), 0)
             FROM transactions t
@@ -73,6 +73,11 @@ public class TransactionRepository {
     }
 
     public long sumDepositsByType(UUID userId, String productType) {
+        String key = buildCacheKey("sumDepositsByType", userId, productType);
+        return (long) cache.get(key, k -> doSumDepositsByType(userId, productType));
+    }
+
+    private long doSumDepositsByType(UUID userId, String productType) {
         String sql = """
             SELECT COALESCE(SUM(t.amount), 0)
             FROM transactions t
@@ -86,6 +91,11 @@ public class TransactionRepository {
     }
 
     public long sumWithdrawalsByType(UUID userId, String productType) {
+        String key = buildCacheKey("sumWithdrawalsByType", userId, productType);
+        return (long) cache.get(key, k -> doSumWithdrawalsByType(userId, productType));
+    }
+
+    private long doSumWithdrawalsByType(UUID userId, String productType) {
         String sql = """
             SELECT COALESCE(SUM(t.amount), 0)
             FROM transactions t
@@ -98,11 +108,11 @@ public class TransactionRepository {
         return result != null ? result.longValue() : 0;
     }
 
-    public List<UUID> getAllUserIds() {
-        String sql = "SELECT DISTINCT user_id FROM transactions";
-        return jdbcTemplate.query(
-                sql,
-                (rs, rowNum) -> UUID.fromString(rs.getString("user_id"))
-        );
+    private String buildCacheKey(String methodName, UUID userId, String productType) {
+        return methodName + ":" + userId + ":" + productType;
+    }
+
+    public void clearCaches() {
+        cache.invalidateAll();
     }
 }
