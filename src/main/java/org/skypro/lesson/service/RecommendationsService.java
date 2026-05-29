@@ -42,6 +42,13 @@ public class RecommendationsService {
         this.dynamicRuleJpaRepository = dynamicRuleJpaRepository;
     }
 
+    /**
+     * Получает список рекомендаций для пользователя.
+     *
+     * @param userId UUID пользователя
+     * @return Список рекомендаций
+     */
+
     public List<Recommendation> getRecommendations(UUID userId) {
         List<Recommendation> recommendations = new ArrayList<>();
 
@@ -69,7 +76,9 @@ public class RecommendationsService {
 
     private boolean checkDynamicRuleConditions(DynamicRule rule, UUID userId) {
         boolean result = true;
+
         for (DynamicRule.QueryDefinition query : rule.getRuleDefinition()) {
+            // Проверка выполнения условий правила
             boolean queryResult = executeQuery(query, userId);
             if (query.isNegate() != null && query.isNegate()) {
                 queryResult = !queryResult;
